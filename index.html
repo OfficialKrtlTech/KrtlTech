@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KrtlCall - Web</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- Supabase Resmi JS Kütüphanesi -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- PeerJS Kütüphanesi -->
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+</head>
+<body>
+
+  <!-- AUTH EKRANI -->
+  <div id="authScreen" class="auth-wrapper">
+    <h1>KrtlCall</h1>
+    <p style="color: var(--text-muted); font-size: 13px;">Gelişmiş Görüntülü Arama & Frame Gen</p>
+
+    <div class="tab-row">
+      <button id="tabLogin" class="tab-btn active" onclick="switchAuthTab('login')">Giriş Yap</button>
+      <button id="tabRegister" class="tab-btn" onclick="switchAuthTab('register')">Kayıt Ol</button>
+    </div>
+
+    <input type="text" id="inpUsername" class="input-field hidden" placeholder="Kullanıcı Adı">
+    <input type="email" id="inpEmail" class="input-field" placeholder="E-Posta Adresi">
+    <input type="password" id="inpPassword" class="input-field" placeholder="Şifre">
+
+    <button id="btnSubmitAuth" class="action-btn" onclick="handleAuthSubmit()">Giriş Yap</button>
+    <div id="authStatus" class="status-msg"></div>
+  </div>
+
+  <!-- ANA PANEL (Giriş Yapılınca Açılır) -->
+  <div id="mainDashboard" class="layout-body hidden" style="flex-direction: column; width: 100%;">
+    <header>
+      <div class="app-title">KrtlCall Pro</div>
+      <div style="display:flex; align-items:center; gap: 12px;">
+        <span class="user-badge" id="displayUsername">@user</span>
+        <button class="action-btn" style="width: auto; height: 32px; padding: 0 12px; background: var(--surface-hover);" onclick="handleLogout()">Çıkış</button>
+      </div>
+    </header>
+
+    <div class="layout-body">
+      <!-- Arkadaşlar Sütunu -->
+      <div class="sidebar-panel">
+        <div class="friend-input-bar">
+          <input type="text" id="targetFriendInp" class="input-field" style="margin: 0;" placeholder="Kullanıcı adı ara...">
+          <button class="action-btn" style="width: 70px;" onclick="sendFriendRequest()">Ekle</button>
+        </div>
+        <ul class="friend-list" id="friendsUiList"></ul>
+      </div>
+
+      <!-- Mesajlaşma Alanı -->
+      <div class="chat-window">
+        <div class="chat-nav">
+          <span id="activePartnerText" style="font-weight: bold; color: var(--text-muted);">Sohbet başlatmak için arkadaş seçin</span>
+          <button id="btnStartCall" class="action-btn hidden" style="width: auto; height: 34px; padding: 0 14px;" onclick="triggerCall()">📹 Görüntülü Ara</button>
+        </div>
+        <div class="feed-box" id="chatFeed"></div>
+        <div class="input-dock">
+          <input type="text" id="chatInputText" class="input-field" style="margin:0;" placeholder="Bir mesaj yazın...">
+          <button class="action-btn" style="width: 80px;" onclick="postChatMessage()">Gönder</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="supabase-client.js"></script>
+  <script>
+    let activeTab = "login";
+
+    function switchAuthTab(tab) {
+      activeTab = tab;
+      document.getElementById('tabLogin').classList.toggle('active', tab === 'login');
+      document.getElementById('tabRegister').classList.toggle('active', tab === 'register');
+      document.getElementById('inpUsername').classList.toggle('hidden', tab === 'login');
+      document.getElementById('btnSubmitAuth').innerText = tab === 'login' ? "Giriş Yap" : "Kayıt Ol";
+      document.getElementById('authStatus').innerText = "";
+    }
+
+    async function handleAuthSubmit() {
+      const email = document.getElementById('inpEmail').value;
+      const pass = document.getElementById('inpPassword').value;
+      const user = document.getElementById('inpUsername').value;
+      const statusBox = document.getElementById('authStatus');
+
+      statusBox.className = "status-msg";
+      statusBox.innerText = "İşlem yapılıyor...";
+
+      try {
+        if (activeTab === 'register') {
+          await registerUser(email, pass, user);
+          statusBox.className = "status-msg success";
+          statusBox.innerText = "Kayıt başarılı! Lütfen gelen kutunuzdaki onay linkine basıp ardından giriş yapın.";
+        } else {
+          const res = await loginUser(email, pass);
+          launchApp(res.profile);
+        }
+      } catch (err) {
+        statusBox.className = "status-msg error";
+        statusBox.innerText = err.message;
+      }
+    }
+
+    function launchApp(profile) {
+      document.getElementById('authScreen').classList.add('hidden');
+      document.getElementById('mainDashboard').classList.remove('hidden');
+      document.getElementById('displayUsername').innerText = "@" + profile.username;
+    }
+
+    async function handleLogout() {
+      await logoutUser();
+      location.reload();
+    }
+
+    // Sayfa açıldığında kayıtlı oturum kontrolü
+    window.addEventListener('DOMContentLoaded', async () => {
+      const sessionData = await restoreSession();
+      if (sessionData) launchApp(sessionData.profile);
+    });
+  </script>
+</body>
+</html>
